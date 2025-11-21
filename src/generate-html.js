@@ -1,4 +1,8 @@
 import * as Comlink from 'comlink';
+// Side-effect import to ensure coordinator.js gets bundled
+import './coordinator.js';
+// Import coordinator HTML as bundled string from virtual module (build-time embedding)
+import coordinatorHtml from 'virtual:coordinator-html';
 
 class GenerateHtml extends HTMLElement {
   static get observedAttributes() {
@@ -52,7 +56,7 @@ class GenerateHtml extends HTMLElement {
           display: block;
         }
       </style>
-      <iframe id="coordinator-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+      <iframe id="coordinator-frame" sandbox="allow-scripts"></iframe>
     `;
     this._iframe = this.shadowRoot.getElementById('coordinator-frame');
   }
@@ -60,14 +64,15 @@ class GenerateHtml extends HTMLElement {
   async _initCoordinator() {
     if (!this._iframe) return;
 
-    // Point to the HTML file which is a build entry point and gets properly transformed.
-    // In dev: Vite serves /src/coordinator.html directly
-    // In prod: The built file is at /src/coordinator.html in the dist folder
-    this._iframe.src = '/src/coordinator.html';
+    // Create blob URL from the build-time embedded coordinator HTML
+    // The coordinatorHtml is fully bundled with all scripts inlined at build time
+    const blob = new Blob([coordinatorHtml], { type: 'text/html' });
+    const blobUrl = URL.createObjectURL(blob);
+    this._iframe.src = blobUrl;
     
     // Wait for iframe load
     this._iframe.onload = () => {
-      console.log('[GenerateHtml] Coordinator iframe loaded');
+      console.log('[GenerateHtml] Coordinator iframe loaded from embedded blob URL');
       // Initialize Comlink
       this._coordinator = Comlink.wrap(Comlink.windowEndpoint(this._iframe.contentWindow));
       
