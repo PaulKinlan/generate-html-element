@@ -56,7 +56,11 @@ class GenerateHtml extends HTMLElement {
           display: block;
         }
       </style>
-      <iframe id="coordinator-frame" sandbox="allow-scripts"></iframe>
+      <iframe 
+        id="coordinator-frame" 
+        sandbox="allow-scripts"
+        allow="language-model">
+      </iframe>
     `;
     this._iframe = this.shadowRoot.getElementById('coordinator-frame');
   }
