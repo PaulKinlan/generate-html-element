@@ -1,6 +1,4 @@
 import * as Comlink from 'comlink';
-// Import the coordinator HTML URL (Vite handles this with ?url)
-import coordinatorHtmlUrl from './coordinator.html?url';
 
 class GenerateHtml extends HTMLElement {
   static get observedAttributes() {
@@ -62,9 +60,10 @@ class GenerateHtml extends HTMLElement {
   async _initCoordinator() {
     if (!this._iframe) return;
 
-    // Point to the HTML file which Vite will process and serve.
-    // This ensures all imports inside coordinator.js (imported by coordinator.html) are resolved.
-    this._iframe.src = coordinatorHtmlUrl;
+    // Point to the HTML file which is a build entry point and gets properly transformed.
+    // In dev: Vite serves /src/coordinator.html directly
+    // In prod: The built file is at /src/coordinator.html in the dist folder
+    this._iframe.src = '/src/coordinator.html';
     
     // Wait for iframe load
     this._iframe.onload = () => {
