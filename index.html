@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generate HTML Demo</title>
+  <script type="module" src="/src/generate-html.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    input,
+    select,
+    button {
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+    }
+
+    generate-html {
+      height: 600px;
+      border: 1px solid #ccc;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+  </style>
+</head>
+
+<body>
+  <h1>&lt;generate-html&gt; Demo</h1>
+
+  <div class="controls">
+    <div class="row">
+      <label>API Key (Gemini):</label>
+      <input type="password" id="api-key" placeholder="Enter your Gemini API Key" />
+    </div>
+
+    <div class="row">
+      <label>Provider:</label>
+      <select id="provider">
+        <option value="gemini">Gemini</option>
+        <option value="chrome-ai">Chrome AI (window.ai)</option>
+      </select>
+
+      <label>Model:</label>
+      <input type="text" id="model" value="gemini-2.5-flash" placeholder="Model Name (e.g. gemini-2.0-flash)" />
+    </div>
+
+    <div class="row">
+      <label>Type:</label>
+      <select id="type">
+        <option value="html">HTML Page</option>
+        <option value="image">Image (SVG)</option>
+      </select>
+
+      <label>Sizing:</label>
+      <select id="sizing">
+        <option value="constrained">Constrained (Default)</option>
+        <option value="content">Content (Auto-resize)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label>Prompt:</label>
+      <input type="text" id="prompt-input" value="Create a simple calculator with a dark theme." />
+      <button id="generate-btn">Generate</button>
+    </div>
+  </div>
+
+  <generate-html id="generator"></generate-html>
+
+  <script>
+    const generator = document.getElementById('generator');
+    const promptInput = document.getElementById('prompt-input');
+    const apiKeyInput = document.getElementById('api-key');
+    const modelInput = document.getElementById('model');
+    const providerSelect = document.getElementById('provider');
+    const typeSelect = document.getElementById('type');
+    const sizingSelect = document.getElementById('sizing');
+    const generateBtn = document.getElementById('generate-btn');
+
+    function updateAttributes() {
+      generator.setAttribute('api-key', apiKeyInput.value);
+      generator.setAttribute('model', modelInput.value);
+      generator.setAttribute('provider', providerSelect.value);
+      generator.setAttribute('type', typeSelect.value);
+      generator.setAttribute('sizing', sizingSelect.value);
+      // Setting prompt triggers generation
+      generator.setAttribute('prompt', promptInput.value);
+    }
+
+    // Persistence Logic
+    const STORAGE_PREFIX = 'generate-html-api-key-';
+
+    function getStorageKey(provider) {
+      return `${STORAGE_PREFIX}${provider}`;
+    }
+
+    function loadApiKey() {
+      const provider = providerSelect.value;
+      const savedKey = localStorage.getItem(getStorageKey(provider));
+      apiKeyInput.value = savedKey || '';
+      // Update the component as well
+      generator.setAttribute('api-key', apiKeyInput.value);
+    }
+
+    function saveApiKey() {
+      const provider = providerSelect.value;
+      const key = apiKeyInput.value;
+      localStorage.setItem(getStorageKey(provider), key);
+      generator.setAttribute('api-key', key);
+    }
+
+    // Event Listeners
+    generateBtn.addEventListener('click', updateAttributes);
+
+    // Save key on input
+    apiKeyInput.addEventListener('input', saveApiKey);
+
+    // Load key on provider change
+    providerSelect.addEventListener('change', () => {
+      loadApiKey();
+      generator.setAttribute('provider', providerSelect.value);
+    });
+
+    sizingSelect.addEventListener('change', () => generator.setAttribute('sizing', sizingSelect.value));
+
+    // Initial load
+    loadApiKey();
+
+  </script>
+</body>
+
+</html>
