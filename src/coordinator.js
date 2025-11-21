@@ -99,13 +99,13 @@ class Coordinator {
   async _generateChromeAI(prompt, model, type) {
     console.log('[Coordinator] _generateChromeAI start');
     if (!window.LanguageModel) {
-      throw new Error('Chrome AI (window.ai.languageModel) is not supported or enabled in this browser.');
+      throw new Error('Chrome AI (window.LanguageModel) is not supported or enabled in this browser.');
     }
 
     const availability  = await LanguageModel.availability();
 
      if (availability == "no") {
-      throw new Error('Chrome AI (window.ai.languageModel) is not supported or enabled in this browser.');
+      throw new Error('Chrome AI (window.LanguageModel) is not supported or enabled in this browser.');
     }  
     
     const systemPrompt = type === 'image' 
