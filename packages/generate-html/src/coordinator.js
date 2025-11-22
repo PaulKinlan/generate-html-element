@@ -55,18 +55,17 @@ class Coordinator {
     console.log('[Coordinator] _generateGemini start');
     if (!apiKey) throw new Error('API Key is required for Gemini provider');
 
-    // Correct instantiation for the new @google/genai SDK
     const client = new GoogleGenAI({ apiKey });
     
     let systemInstruction = "You are a helpful assistant.";
     let promptSuffix = "";
 
     if (type === 'image') {
-      systemInstruction = "You are an image generator. You must generate an SVG representation of the requested image. Return ONLY the raw SVG code, starting with <svg and ending with </svg>. Do not wrap in markdown code blocks.";
-      promptSuffix = " (Return raw SVG only)";
+      systemInstruction = "You are an image generator. Generate an SVG image. Return the raw SVG code wrapped in a markdown code block (```svg ... ```). Do not explain the output.";
+      promptSuffix = " (Return SVG in markdown code block)";
     } else {
-      systemInstruction = "You are a web developer. You must generate a fully functional, interactive HTML document based on the user's request. Include all necessary CSS and JS inside the HTML. Return ONLY the raw HTML code. Do not wrap in markdown code blocks. Start with <!DOCTYPE html>. Do not link to external CSS or JS files (like Google Fonts or CDNs). All styling and scripts must be embedded inline.";
-      promptSuffix = " (Return raw HTML only)";
+      systemInstruction = "You are a web developer. Generate a self-contained HTML page with CSS/JS. Return the raw HTML code wrapped in a markdown code block (```html ... ```). Do not explain the output. Start with <!DOCTYPE html>. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.";
+      promptSuffix = " (Return HTML in markdown code block)";
     }
 
     console.log('[Coordinator] Gemini System Instruction:', systemInstruction);
@@ -85,19 +84,21 @@ class Coordinator {
       ]
     });
 
-    let text = '';
+    const parser = new CodeBlockParser();
     for await (const chunk of responseStream) {
-      // @google/genai chunks might have .text as a property or require different access
-      // Based on user's previous edit for non-streaming, we try property access.
       const chunkText = chunk.text; 
       if (chunkText) {
-        text += chunkText;
+        if (!parser.feed(chunkText)) {
+          console.log('[Coordinator] Gemini: Code block closed, stopping stream.');
+          break;
+        }
       }
     }
     
-    console.log('[Coordinator] Gemini Final Text:', text);
+    const finalCode = parser.getCode();
+    console.log('[Coordinator] Gemini Final Code Length:', finalCode.length);
     console.log('[Coordinator] _generateGemini complete');
-    return this._cleanMarkdown(text);
+    return finalCode;
   }
 
   async _generateChromeAI(prompt, model, type) {
@@ -113,8 +114,8 @@ class Coordinator {
     }  
     
     const systemPrompt = type === 'image' 
-      ? 'Generate an SVG image. Return only raw SVG code.' 
-      : 'Generate a self-contained HTML page with CSS/JS. Return only raw HTML code. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
+      ? 'Generate an SVG image. Return the raw SVG code wrapped in a markdown code block (```svg ... ```). Do not explain the output.' 
+      : 'Generate a self-contained HTML page with CSS/JS. Return the raw HTML code wrapped in a markdown code block (```html ... ```). Do not explain the output. Start with <!DOCTYPE html>. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
 
     console.log('[Coordinator] Chrome AI System Prompt:', systemPrompt);
     console.log('[Coordinator] Chrome AI User Prompt:', prompt);
@@ -124,20 +125,25 @@ class Coordinator {
     });
 
     const stream = await session.promptStreaming(prompt);
-    let result = '';
+    const parser = new CodeBlockParser();
+    
     for await (const chunk of stream) {
       console.log('[Coordinator] Chrome AI Chunk:', chunk);
-      result = chunk;
+      if (!parser.feed(chunk)) {
+        console.log('[Coordinator] Chrome AI: Code block closed, stopping stream.');
+        break;
+      }
     }
-    console.log('[Coordinator] Chrome AI Final Result:', result);
+    
+    const finalCode = parser.getCode();
+    console.log('[Coordinator] Chrome AI Final Code Length:', finalCode.length);
     console.log('[Coordinator] _generateChromeAI complete');
-    return this._cleanMarkdown(result);
+    return finalCode;
   }
 
   _cleanMarkdown(text) {
-    if (!text) return '';
-    // Remove ```html ... ``` or ```svg ... ``` wrapper if present
-    return text.replace(/^```(html|svg|xml)?\n/, '').replace(/\n```$/, '');
+    // Deprecated, logic moved to CodeBlockParser
+    return text;
   }
 
   _render(content, type) {
@@ -223,6 +229,54 @@ class Coordinator {
       }
     };
     window.addEventListener('message', this._resizeHandler);
+  }
+}
+
+class CodeBlockParser {
+  constructor() {
+    this.buffer = '';
+    this.state = 'WAITING'; // WAITING, IN_BLOCK, FINISHED
+    this.capturedCode = '';
+  }
+
+  /**
+   * Processes a chunk of text.
+   * @param {string} chunk - The new text chunk.
+   * @returns {boolean} - True if processing should continue, False if block is finished.
+   */
+  feed(chunk) {
+    if (this.state === 'FINISHED') return false;
+
+    this.buffer += chunk;
+
+    if (this.state === 'WAITING') {
+      // Look for start of code block
+      const startMatch = this.buffer.match(/```(?:html|svg|xml)?\s*/i);
+      if (startMatch) {
+        this.state = 'IN_BLOCK';
+        // Remove the start tag from buffer and move rest to capturedCode
+        this.capturedCode = this.buffer.substring(startMatch.index + startMatch[0].length);
+        this.buffer = ''; // Buffer is now used for checking end tag split? No, just append to capturedCode
+      }
+    } else if (this.state === 'IN_BLOCK') {
+      this.capturedCode += chunk;
+    }
+
+    if (this.state === 'IN_BLOCK') {
+      // Check for end of code block
+      const endMatch = this.capturedCode.indexOf('```');
+      if (endMatch !== -1) {
+        this.capturedCode = this.capturedCode.substring(0, endMatch);
+        this.state = 'FINISHED';
+        return false; // Stop processing
+      }
+    }
+
+    return true; // Continue processing
+  }
+
+  getCode() {
+    return this.capturedCode;
   }
 }
 
