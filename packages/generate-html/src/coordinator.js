@@ -227,6 +227,8 @@ class Coordinator {
       }
     }
 
+    console.log('[Coordinator] _render finalContent:', finalContent);
+
     const blob = new Blob([finalContent], { type: 'text/html' });
     iframe.src = URL.createObjectURL(blob);
 
