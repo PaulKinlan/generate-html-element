@@ -266,12 +266,14 @@ class CodeBlockParser {
 
     if (this.state === 'WAITING') {
       // Look for start of code block
-      const startMatch = this.buffer.match(/```(?:html|svg|xml)?\s*/i);
+      // Match: ``` optionally followed by language (html/svg/xml) and newline
+      const startMatch = this.buffer.match(/```(html|svg|xml)(\r?\n)?/i);
       if (startMatch) {
         this.state = 'IN_BLOCK';
-        // Remove the start tag from buffer and move rest to capturedCode
-        this.capturedCode = this.buffer.substring(startMatch.index + startMatch[0].length);
-        this.buffer = ''; // Buffer is now used for checking end tag split? No, just append to capturedCode
+        // Calculate how much to skip: always skip the full match
+        const skipLength = startMatch[0].length;
+        this.capturedCode = this.buffer.substring(startMatch.index + skipLength);
+        this.buffer = '';
       }
     } else if (this.state === 'IN_BLOCK') {
       this.capturedCode += chunk;
