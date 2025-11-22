@@ -69,6 +69,9 @@ class Coordinator {
       promptSuffix = " (Return raw HTML only)";
     }
 
+    console.log('[Coordinator] Gemini System Instruction:', systemInstruction);
+    console.log('[Coordinator] Gemini User Prompt:', prompt + promptSuffix);
+
     const responseStream = await client.models.generateContentStream({
       model: model || 'gemini-2.5-flash-latest',
       contents: [
@@ -92,6 +95,7 @@ class Coordinator {
       }
     }
     
+    console.log('[Coordinator] Gemini Final Text:', text);
     console.log('[Coordinator] _generateGemini complete');
     return this._cleanMarkdown(text);
   }
@@ -112,6 +116,9 @@ class Coordinator {
       ? 'Generate an SVG image. Return only raw SVG code.' 
       : 'Generate a self-contained HTML page with CSS/JS. Return only raw HTML code. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
 
+    console.log('[Coordinator] Chrome AI System Prompt:', systemPrompt);
+    console.log('[Coordinator] Chrome AI User Prompt:', prompt);
+
     const session = await LanguageModel.create({
         systemPrompt
     });
@@ -119,8 +126,10 @@ class Coordinator {
     const stream = await session.promptStreaming(prompt);
     let result = '';
     for await (const chunk of stream) {
+      console.log('[Coordinator] Chrome AI Chunk:', chunk);
       result = chunk;
     }
+    console.log('[Coordinator] Chrome AI Final Result:', result);
     console.log('[Coordinator] _generateChromeAI complete');
     return this._cleanMarkdown(result);
   }
