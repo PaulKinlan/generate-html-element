@@ -30,6 +30,14 @@ Since this is a prototype/demo structure using Vite:
     ```
     Open the link (usually `http://localhost:5173`) to see the demo.
 
+## Installation (Package)
+
+You can also install the component directly via npm:
+
+```bash
+npm install @paulkinlan/generate-html
+```
+
 ## Usage
 
 Import the component script (bundled) and use the tag in your HTML.
@@ -55,6 +63,8 @@ Import the component script (bundled) and use the tag in your HTML.
 | `provider` | `gemini` or `chrome-ai`.                         | `gemini` |
 | `model`    | Model version (e.g., `gemini-2.5-flash-latest`). | `gemini-2.5-flash-latest` |
 | `type`     | Output type: `html` (interactive) or `image` (SVG). | `html` |
+| `sizing`   | `content` (auto-resize to content) or `fill` (100% height). | `fill` |
+| `debug`    | Boolean. If present, logs debug info to console. | `false` |
 
 ## Security Architecture
 
@@ -66,7 +76,7 @@ This component handles untrusted AI-generated code. To prevent XSS and data leak
     *   **Does NOT** render the generated content directly.
 
 2.  **Coordinator Iframe (Hidden)**:
-    *   Loaded from the same origin (bundled).
+    *   **Source:** Inlined/Bundled (no separate network request).
     *   Communicates with the Host via `Comlink`.
     *   Handles the API calls to Gemini/Chrome AI.
     *   Creates the *Renderer Iframe*.
@@ -82,7 +92,15 @@ This component handles untrusted AI-generated code. To prevent XSS and data leak
 *   **Build:** `npm run build`
 *   **Preview:** `npm run preview`
 
+## Project Structure
+
+This is a monorepo containing:
+
+*   `packages/generate-html`: The core web component package.
+*   `packages/demo`: A demo application showcasing the component.
+*   `src/`: Shared source files.
+
 ## Requirements
 
 *   **Gemini Provider:** A valid Google Cloud API Key with access to Gemini models.
-*   **Chrome AI Provider:** Requires Chrome Canary/Dev with `Optimization Guide On Device Model` enabled and necessary flags.
+*   **Chrome AI Provider:** Requires Chrome Canary/Dev with `window.LanguageModel` API enabled.

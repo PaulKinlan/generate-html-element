@@ -12,7 +12,7 @@ Security is paramount. We use a **Double Iframe** pattern to isolate the generat
     *   Communicates with Layer 2 via `Comlink`.
 
 2.  **Layer 2: Coordinator Iframe**
-    *   **Source:** `src/coordinator.html` (bundled by Vite).
+    *   **Source:** Inlined from `src/coordinator.html` via virtual module.
     *   **Role:** Orchestrates the LLM calls.
     *   **Libraries:** `@google/genai`, `comlink`.
     *   **Security:** Same-origin (usually) to allow easy loading, but logic isolates it from rendering.
@@ -41,7 +41,8 @@ Security is paramount. We use a **Double Iframe** pattern to isolate the generat
 
 ### 2. Modifying `<generate-html>` (Host Component)
 *   **Observation:** The component observes attributes. Complex updates should trigger the `triggerGeneration()` method.
-*   **Iframe Source:** Always point the Coordinator iframe `src` to the Vite-bundled URL (`import url from './coordinator.html?url'`).
+*   **Iframe Source:** The Coordinator iframe `src` is set to a Blob URL created from the inlined HTML string.
+*   **Sizing:** The component supports a `sizing="content"` attribute. It listens for `generated-content-resize` messages from the coordinator to adjust its height.
 
 ### 3. Testing
 *   **Manual:** Use `npm run dev` and open `http://localhost:5173`.
@@ -51,7 +52,7 @@ Security is paramount. We use a **Double Iframe** pattern to isolate the generat
 
 ### 4. Build
 *   Run `npm run build` to generate the production assets.
-*   The build produces an entry point for the custom element and a separate HTML file for the coordinator.
+*   The build produces a single JS bundle for the custom element (with the coordinator inlined).
 
 ## Common Pitfalls to Avoid
 *   **Do not** give the Renderer iframe `allow-same-origin`.
