@@ -123,7 +123,7 @@ class Coordinator {
     
     const systemPrompt = type === 'image' 
       ? 'Generate an SVG image. Return the raw SVG code wrapped in a markdown code block (```svg ... ```). Do not explain the output.' 
-      : 'Generate a self-contained HTML page with CSS/JS. Return the raw HTML code wrapped in a markdown code block (```html ... ```). Do not explain the output. Start with <!DOCTYPE html>. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
+      : 'Generate a self-contained HTML page with CSS/JS. Return the raw HTML code wrapped in a markdown code block (```html ... ```). Do not explain the output. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
 
     this.log('[Coordinator] Chrome AI System Prompt:', systemPrompt);
     this.log('[Coordinator] Chrome AI User Prompt:', prompt);
