@@ -6,7 +6,7 @@ import coordinatorHtml from 'virtual:coordinator-html';
 
 class GenerateHtml extends HTMLElement {
   static get observedAttributes() {
-    return ['prompt', 'api-key', 'model', 'provider', 'type', 'sizing'];
+    return ['prompt', 'api-key', 'model', 'provider', 'type', 'sizing', 'debug'];
   }
 
   constructor() {
@@ -28,7 +28,9 @@ class GenerateHtml extends HTMLElement {
 
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue !== newValue) {
-      console.log(`[GenerateHtml] Attribute changed: ${name} from '${oldValue}' to '${newValue}'`);
+      if (this.hasAttribute('debug')) {
+        console.log(`[GenerateHtml] Attribute changed: ${name} from '${oldValue}' to '${newValue}'`);
+      }
       // If prompt changes, trigger generation
       if (name === 'prompt' && newValue) {
         this.triggerGeneration();
@@ -76,7 +78,9 @@ class GenerateHtml extends HTMLElement {
     
     // Wait for iframe load
     this._iframe.onload = () => {
-      console.log('[GenerateHtml] Coordinator iframe loaded from embedded blob URL');
+      if (this.hasAttribute('debug')) {
+        console.log('[GenerateHtml] Coordinator iframe loaded from embedded blob URL');
+      }
       // Initialize Comlink
       this._coordinator = Comlink.wrap(Comlink.windowEndpoint(this._iframe.contentWindow));
       
@@ -90,13 +94,16 @@ class GenerateHtml extends HTMLElement {
   async triggerGeneration() {
     if (!this._coordinator) return;
 
-    console.log('[GenerateHtml] Triggering generation...');
+    if (this.hasAttribute('debug')) {
+      console.log('[GenerateHtml] Triggering generation...');
+    }
     const config = {
       prompt: this.getAttribute('prompt'),
       apiKey: this.getAttribute('api-key'),
       model: this.getAttribute('model'),
       provider: this.getAttribute('provider') || 'gemini',
-      type: this.getAttribute('type') || 'html'
+      type: this.getAttribute('type') || 'html',
+      debug: this.hasAttribute('debug')
     };
 
     // Call the coordinator
@@ -117,7 +124,9 @@ class GenerateHtml extends HTMLElement {
     // We rely on the message structure.
     
     if (event.data && event.data.type === 'generated-content-resize') {
-      console.log('[GenerateHtml] Received resize:', event.data.height);
+      if (this.hasAttribute('debug')) {
+        console.log('[GenerateHtml] Received resize:', event.data.height);
+      }
       this._currentContentHeight = event.data.height;
       this._updateSizing();
     }
@@ -125,7 +134,9 @@ class GenerateHtml extends HTMLElement {
 
   _updateSizing() {
     const sizing = this.getAttribute('sizing');
-    console.log(`[GenerateHtml] Updating sizing. Mode: ${sizing}, Height: ${this._currentContentHeight}`);
+    if (this.hasAttribute('debug')) {
+      console.log(`[GenerateHtml] Updating sizing. Mode: ${sizing}, Height: ${this._currentContentHeight}`);
+    }
     if (sizing === 'content' && this._currentContentHeight) {
       this.style.height = `${this._currentContentHeight}px`;
       // Also update the internal iframe container if needed, but :host style should suffice

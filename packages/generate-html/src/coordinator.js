@@ -5,10 +5,18 @@ class Coordinator {
   constructor() {
     this.renderContainer = null;
     this._resizeHandler = null;
+    this.debug = false;
+  }
+
+  log(...args) {
+    if (this.debug) {
+      console.log(...args);
+    }
   }
 
   async generateContent(config) {
-    console.log('[Coordinator] generateContent called with config:', { ...config, apiKey: '***' });
+    this.debug = !!config.debug;
+    this.log('[Coordinator] generateContent called with config:', { ...config, apiKey: '***' });
     const { prompt, apiKey, model, provider, type } = config;
 
     if (!prompt) return;
@@ -28,10 +36,10 @@ class Coordinator {
 
     try {
       if (provider === 'chrome-ai') {
-        console.log('[Coordinator] Using Chrome AI provider');
+        this.log('[Coordinator] Using Chrome AI provider');
         content = await this._generateChromeAI(prompt, model, type);
       } else {
-        console.log('[Coordinator] Using Gemini provider');
+        this.log('[Coordinator] Using Gemini provider');
         content = await this._generateGemini(prompt, apiKey, model, type);
       }
     } catch (error) {
@@ -47,12 +55,12 @@ class Coordinator {
       `;
     }
 
-    console.log('[Coordinator] Rendering content (length: ' + content.length + ')');
+    this.log('[Coordinator] Rendering content (length: ' + content.length + ')');
     this._render(content, type);
   }
 
   async _generateGemini(prompt, apiKey, model, type) {
-    console.log('[Coordinator] _generateGemini start');
+    this.log('[Coordinator] _generateGemini start');
     if (!apiKey) throw new Error('API Key is required for Gemini provider');
 
     const client = new GoogleGenAI({ apiKey });
@@ -68,8 +76,8 @@ class Coordinator {
       promptSuffix = " (Return HTML in markdown code block)";
     }
 
-    console.log('[Coordinator] Gemini System Instruction:', systemInstruction);
-    console.log('[Coordinator] Gemini User Prompt:', prompt + promptSuffix);
+    this.log('[Coordinator] Gemini System Instruction:', systemInstruction);
+    this.log('[Coordinator] Gemini User Prompt:', prompt + promptSuffix);
 
     const responseStream = await client.models.generateContentStream({
       model: model || 'gemini-2.5-flash-latest',
@@ -89,20 +97,20 @@ class Coordinator {
       const chunkText = chunk.text; 
       if (chunkText) {
         if (!parser.feed(chunkText)) {
-          console.log('[Coordinator] Gemini: Code block closed, stopping stream.');
+          this.log('[Coordinator] Gemini: Code block closed, stopping stream.');
           break;
         }
       }
     }
     
     const finalCode = parser.getCode();
-    console.log('[Coordinator] Gemini Final Code Length:', finalCode.length);
-    console.log('[Coordinator] _generateGemini complete');
+    this.log('[Coordinator] Gemini Final Code Length:', finalCode.length);
+    this.log('[Coordinator] _generateGemini complete');
     return finalCode;
   }
 
   async _generateChromeAI(prompt, model, type) {
-    console.log('[Coordinator] _generateChromeAI start');
+    this.log('[Coordinator] _generateChromeAI start');
     if (!window.LanguageModel) {
       throw new Error('Chrome AI (window.LanguageModel) is not supported or enabled in this browser.');
     }
@@ -117,8 +125,8 @@ class Coordinator {
       ? 'Generate an SVG image. Return the raw SVG code wrapped in a markdown code block (```svg ... ```). Do not explain the output.' 
       : 'Generate a self-contained HTML page with CSS/JS. Return the raw HTML code wrapped in a markdown code block (```html ... ```). Do not explain the output. Start with <!DOCTYPE html>. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
 
-    console.log('[Coordinator] Chrome AI System Prompt:', systemPrompt);
-    console.log('[Coordinator] Chrome AI User Prompt:', prompt);
+    this.log('[Coordinator] Chrome AI System Prompt:', systemPrompt);
+    this.log('[Coordinator] Chrome AI User Prompt:', prompt);
 
     const session = await LanguageModel.create({
         systemPrompt
@@ -128,16 +136,16 @@ class Coordinator {
     const parser = new CodeBlockParser();
     
     for await (const chunk of stream) {
-      console.log('[Coordinator] Chrome AI Chunk:', chunk);
+      this.log('[Coordinator] Chrome AI Chunk:', chunk);
       if (!parser.feed(chunk)) {
-        console.log('[Coordinator] Chrome AI: Code block closed, stopping stream.');
+        this.log('[Coordinator] Chrome AI: Code block closed, stopping stream.');
         break;
       }
     }
     
     const finalCode = parser.getCode();
-    console.log('[Coordinator] Chrome AI Final Code Length:', finalCode.length);
-    console.log('[Coordinator] _generateChromeAI complete');
+    this.log('[Coordinator] Chrome AI Final Code Length:', finalCode.length);
+    this.log('[Coordinator] _generateChromeAI complete');
     return finalCode;
   }
 
@@ -224,7 +232,7 @@ class Coordinator {
     this._resizeHandler = (event) => {
       if (event.data && event.data.type === 'generated-content-resize') {
         // Forward to the top-level parent (the application hosting the coordinator)
-        console.log('[Coordinator] Forwarding resize:', event.data.height);
+        this.log('[Coordinator] Forwarding resize:', event.data.height);
         window.parent.postMessage(event.data, '*');
       }
     };
