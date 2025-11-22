@@ -5,7 +5,10 @@
   "main": "./dist/generate-html.js",
   "module": "./dist/generate-html.js",
   "exports": {
-    ".": "./dist/generate-html.js"
+    ".": {
+      "import": "./dist/generate-html.js",
+      "default": "./dist/generate-html.js"
+    }
   },
   "dependencies": {
     "comlink": "^4.4.2",
@@ -16,6 +19,7 @@
   },
   "scripts": {
     "build": "vite build",
-    "dev": "vite"
+    "dev": "vite",
+    "prepare": "npm run build"
   }
 }

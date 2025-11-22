@@ -6,7 +6,7 @@ A secure, LLM-powered Web Component that generates and renders interactive HTML 
 
 *   **✨ AI-Generated Content:** Turns text prompts into interactive web apps (calculators, games) or SVG images.
 *   **🔒 Secure Sandbox:** Uses a "Double Iframe" architecture to ensure generated code cannot access your API keys or host page data.
-*   **🚀 Multi-Provider:** Supports **Google Gemini** (via API Key) and **Chrome Built-in AI** (experimental `window.ai`).
+*   **🚀 Multi-Provider:** Supports **Google Gemini** (via API Key) and **Chrome Built-in AI** (experimental `window.LargeLanguageModel`).
 *   **⚡ Vanilla JS:** Zero framework dependencies. Built with standard Web Components.
 
 ## Installation
