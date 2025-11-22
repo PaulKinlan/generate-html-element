@@ -168,6 +168,7 @@ class Coordinator {
     
     // Ensure content type is correct
     let finalContent = content;
+    console.log('[Coordinator] _render content:', content);
     if (type === 'image' && !content.trim().startsWith('<svg')) {
         // If it's supposed to be an image but isn't SVG, wrap it or handle error?
         // For now, we assume LLM returns SVG.
