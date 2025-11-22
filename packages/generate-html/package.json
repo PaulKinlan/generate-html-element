@@ -18,7 +18,9 @@
     "vite": "^7.2.4"
   },
   "scripts": {
-    "build": "vite build",
+    "build:coordinator": "vite build -c vite.coordinator.config.js",
+    "build:lib": "vite build",
+    "build": "npm run build:coordinator && npm run build:lib",
     "dev": "vite",
     "prepare": "npm run build"
   }

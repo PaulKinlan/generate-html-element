@@ -5,10 +5,7 @@ export default defineConfig({
   plugins: [coordinatorInlinePlugin()],
   build: {
     lib: {
-      entry: {
-        'generate-html': 'src/generate-html.js',
-        'coordinator': 'src/coordinator.js'
-      },
+      entry: 'src/generate-html.js',
       formats: ['es']
     },
     rollupOptions: {

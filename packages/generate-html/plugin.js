@@ -31,25 +31,14 @@ export default function coordinatorInlinePlugin() {
           return `export default ${JSON.stringify(html)}`;
         }
         
-        // In build, return placeholder - we'll replace with bundled coordinator in generateBundle
-        return `export default "__COORDINATOR_HTML_PLACEHOLDER__";`;
-      }
-    },
-
-    generateBundle(options, bundle) {
-      // Find the bundled coordinator.js
-      const coordinatorChunk = Object.entries(bundle).find(([name, chunk]) =>
-        chunk.type === 'chunk' && name.includes('coordinator') && !name.includes('main')
-      );
-
-      if (coordinatorChunk) {
-        const [coordFileName, coordChunk] = coordinatorChunk;
-        const coordinatorCode = coordChunk.code;
-        
-        console.log('[coordinator-inline] Found coordinator chunk:', coordFileName);
-        
-        // Create HTML with inlined coordinator code
-        const coordinatorHtml = `<!DOCTYPE html>
+        // In build, read the pre-built coordinator bundle
+        try {
+          const coordinatorPath = resolve(config.root, 'dist/coordinator.js');
+          const coordinatorCode = readFileSync(coordinatorPath, 'utf-8');
+          
+          console.log('[coordinator-inline] Found pre-built coordinator:', coordinatorPath);
+          
+          const coordinatorHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -71,21 +60,11 @@ ${coordinatorCode}
   </script>
 </body>
 </html>`;
-
-        // Replace placeholder in main bundle
-        for (const [fileName, chunk] of Object.entries(bundle)) {
-          if (chunk.type === 'chunk') {
-            if (chunk.code.includes('__COORDINATOR_HTML_PLACEHOLDER__')) {
-              chunk.code = chunk.code.replace(
-                '"__COORDINATOR_HTML_PLACEHOLDER__"',
-                JSON.stringify(coordinatorHtml)
-              );
-              console.log('[coordinator-inline] Embedded coordinator HTML into', fileName);
-            }
-          }
+          return `export default ${JSON.stringify(coordinatorHtml)}`;
+        } catch (e) {
+          console.error('[coordinator-inline] Failed to read pre-built coordinator:', e);
+          throw e;
         }
-      } else {
-        console.warn('[coordinator-inline] Could not find coordinator chunk in bundle');
       }
     }
   };
