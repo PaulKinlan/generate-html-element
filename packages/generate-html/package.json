@@ -1,0 +1,21 @@
+{
+  "name": "@paulkinlan/generate-html",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/generate-html.js",
+  "module": "./dist/generate-html.js",
+  "exports": {
+    ".": "./dist/generate-html.js"
+  },
+  "dependencies": {
+    "comlink": "^4.4.2",
+    "@google/genai": "^1.30.0"
+  },
+  "devDependencies": {
+    "vite": "^7.2.4"
+  },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite"
+  }
+}

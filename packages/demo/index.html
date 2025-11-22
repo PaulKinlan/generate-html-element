@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Generate HTML Demo</title>
+  <script type="module">
+    import '@paulkinlan/generate-html';
+  </script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 2rem;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: #f5f5f5;
+      border-radius: 8px;
+    }
+
+    .row {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    input,
+    select,
+    button {
+      padding: 0.5rem;
+      font-size: 1rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+    }
+
+    generate-html {
+      height: 600px;
+      border: 1px solid #ccc;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .code-example {
+      margin-bottom: 2rem;
+      background: #1e1e1e;
+      border-radius: 8px;
+      padding: 1.5rem;
+      overflow-x: auto;
+    }
+
+    .code-example h3 {
+      color: #fff;
+      margin-top: 0;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+      font-weight: 500;
+    }
+
+    .code-example pre {
+      margin: 0;
+      font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+
+    .code-example code {
+      color: #d4d4d4;
+    }
+
+    .code-example .token-tag {
+      color: #569cd6;
+    }
+
+    .code-example .token-attr {
+      color: #9cdcfe;
+    }
+
+    .code-example .token-value {
+      color: #ce9178;
+    }
+
+    .code-example .token-comment {
+      color: #6a9955;
+    }
+
+    .code-example-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .code-example-header h3 {
+      margin: 0;
+    }
+
+    .copy-btn {
+      background: #0e639c;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: #1177bb;
+    }
+
+    .copy-btn.copied {
+      background: #16825d;
+    }
+
+    .password-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      margin-left: 0.5rem;
+      color: #666;
+      font-size: 1.2rem;
+    }
+
+    .password-toggle:hover {
+      color: #333;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>&lt;generate-html&gt; Demo</h1>
+
+  <div class="code-example">
+    <div class="code-example-header">
+      <h3>Usage Example</h3>
+      <button class="copy-btn" id="copy-btn">Copy Code</button>
+    </div>
+    <pre><code id="code-display"><span class="token-comment">&lt;!-- Include the web component --&gt;</span>
+    <span class="token-tag">&lt;script type="module"&gt; </span><span class="token-tag">import '@paulkinlan/generate-html';</span><span class="token-tag">&lt;/script&gt;</span>
+
+<span class="token-comment">&lt;!-- Use the component --&gt;</span>
+<span class="token-tag">&lt;generate-html</span>
+  <span class="token-attr">prompt</span>=<span class="token-value" id="code-prompt">"Create a simple calculator"</span>
+  <span class="token-attr">api-key</span>=<span class="token-value" id="code-api-key">"your-api-key-here"</span>
+  <span class="token-attr">model</span>=<span class="token-value" id="code-model">"gemini-2.5-flash"</span>
+  <span class="token-attr">provider</span>=<span class="token-value" id="code-provider">"gemini"</span>
+  <span class="token-attr">type</span>=<span class="token-value" id="code-type">"html"</span>
+  <span class="token-attr">sizing</span>=<span class="token-value" id="code-sizing">"content"</span><span class="token-tag">&gt;</span>
+<span class="token-tag">&lt;/generate-html&gt;</span></code></pre>
+  </div>
+
+  <div class="controls">
+    <div class="row">
+      <label>API Key (Gemini):</label>
+      <input type="password" id="api-key" placeholder="Enter your Gemini API Key" />
+      <button type="button" class="password-toggle" id="password-toggle" title="Show/Hide API Key">👁️</button>
+    </div>
+
+    <div class="row">
+      <label>Provider:</label>
+      <select id="provider">
+        <option value="gemini">Gemini</option>
+        <option value="chrome-ai">Chrome AI (window.ai)</option>
+      </select>
+
+      <label>Model:</label>
+      <input type="text" id="model" value="gemini-2.5-flash" placeholder="Model Name (e.g. gemini-2.0-flash)" />
+    </div>
+
+    <div class="row">
+      <label>Type:</label>
+      <select id="type">
+        <option value="html">HTML Page</option>
+        <option value="image">Image (SVG)</option>
+      </select>
+
+      <label>Sizing:</label>
+      <select id="sizing">
+        <option value="constrained">Constrained (Default)</option>
+        <option value="content">Content (Auto-resize)</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label>Prompt:</label>
+      <input type="text" id="prompt-input" value="Create a simple calculator with a dark theme." />
+      <button id="generate-btn">Generate</button>
+    </div>
+  </div>
+
+  <generate-html id="generator"></generate-html>
+
+  <script>
+    const generator = document.getElementById('generator');
+    const promptInput = document.getElementById('prompt-input');
+    const apiKeyInput = document.getElementById('api-key');
+    const modelInput = document.getElementById('model');
+    const providerSelect = document.getElementById('provider');
+    const typeSelect = document.getElementById('type');
+    const sizingSelect = document.getElementById('sizing');
+    const generateBtn = document.getElementById('generate-btn');
+
+    function updateAttributes() {
+      generator.setAttribute('api-key', apiKeyInput.value);
+      generator.setAttribute('model', modelInput.value);
+      generator.setAttribute('provider', providerSelect.value);
+      generator.setAttribute('type', typeSelect.value);
+      generator.setAttribute('sizing', sizingSelect.value);
+      // Setting prompt triggers generation
+      generator.setAttribute('prompt', promptInput.value);
+    }
+
+    // Persistence Logic
+    const STORAGE_PREFIX = 'generate-html-api-key-';
+
+    function getStorageKey(provider) {
+      return `${STORAGE_PREFIX}${provider}`;
+    }
+
+    function loadApiKey() {
+      const provider = providerSelect.value;
+      const savedKey = localStorage.getItem(getStorageKey(provider));
+      apiKeyInput.value = savedKey || '';
+      // Update the component as well
+      generator.setAttribute('api-key', apiKeyInput.value);
+    }
+
+    function saveApiKey() {
+      const provider = providerSelect.value;
+      const key = apiKeyInput.value;
+      localStorage.setItem(getStorageKey(provider), key);
+      generator.setAttribute('api-key', key);
+    }
+
+    // Event Listeners
+    generateBtn.addEventListener('click', updateAttributes);
+
+    // Save key on input
+    apiKeyInput.addEventListener('input', saveApiKey);
+
+    // Load key on provider change
+    providerSelect.addEventListener('change', () => {
+      loadApiKey();
+      generator.setAttribute('provider', providerSelect.value);
+    });
+
+    sizingSelect.addEventListener('change', () => generator.setAttribute('sizing', sizingSelect.value));
+
+    // Initial load
+    loadApiKey();
+
+    // Update code example
+    function updateCodeExample() {
+      const apiKey = apiKeyInput.value || 'your-api-key-here';
+      // Mask the API key in the display
+      const displayKey = apiKeyInput.value ? '●●●●●●●●●●●●' : 'your-api-key-here';
+
+      document.getElementById('code-prompt').textContent = `"${promptInput.value}"`;
+      document.getElementById('code-api-key').textContent = `"${displayKey}"`;
+      document.getElementById('code-model').textContent = `"${modelInput.value}"`;
+      document.getElementById('code-provider').textContent = `"${providerSelect.value}"`;
+      document.getElementById('code-type').textContent = `"${typeSelect.value}"`;
+      document.getElementById('code-sizing').textContent = `"${sizingSelect.value}"`;
+    }
+
+    // Copy code functionality
+    const copyBtn = document.getElementById('copy-btn');
+    copyBtn.addEventListener('click', async () => {
+      const codeText = `<!-- Include the web component -->
+<script type="module" src="/src/generate-html.js"><\/script>
+
+<!-- Use the component -->
+<generate-html
+  prompt="${promptInput.value}"
+  api-key="${apiKeyInput.value || 'your-api-key-here'}"
+  model="${modelInput.value}"
+  provider="${providerSelect.value}"
+  type="${typeSelect.value}"
+  sizing="${sizingSelect.value}">
+</generate-html>`;
+
+      try {
+        await navigator.clipboard.writeText(codeText);
+        copyBtn.textContent = '✓ Copied!';
+        copyBtn.classList.add('copied');
+        setTimeout(() => {
+          copyBtn.textContent = 'Copy Code';
+          copyBtn.classList.remove('copied');
+        }, 2000);
+      } catch (err) {
+        console.error('Failed to copy:', err);
+      }
+    });
+
+    // Password toggle functionality
+    const passwordToggle = document.getElementById('password-toggle');
+    passwordToggle.addEventListener('click', () => {
+      const type = apiKeyInput.type === 'password' ? 'text' : 'password';
+      apiKeyInput.type = type;
+      passwordToggle.textContent = type === 'password' ? '👁️' : '🙈';
+    });
+
+    // Update code example on input changes
+    promptInput.addEventListener('input', updateCodeExample);
+    apiKeyInput.addEventListener('input', updateCodeExample);
+    modelInput.addEventListener('input', updateCodeExample);
+    providerSelect.addEventListener('change', updateCodeExample);
+    typeSelect.addEventListener('change', updateCodeExample);
+    sizingSelect.addEventListener('change', updateCodeExample);
+
+    // Initial code example update
+    updateCodeExample();
+
+  </script>
+</body>
+
+</html>
