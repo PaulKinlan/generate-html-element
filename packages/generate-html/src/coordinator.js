@@ -129,7 +129,11 @@ class Coordinator {
     this.log('[Coordinator] Chrome AI User Prompt:', prompt);
 
     const session = await LanguageModel.create({
-        systemPrompt
+      initialPrompts: [{
+        role: 'system',
+        content: systemPrompt
+      }],
+      expectedInputs: [{type: 'text'}]
     });
 
     const stream = await session.promptStreaming(prompt);
