@@ -14,16 +14,21 @@ class GenerateHtml extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._coordinator = null;
     this._iframe = null;
+    this._mutationObserver = null;
   }
 
   connectedCallback() {
     this.render();
     this._initCoordinator();
     window.addEventListener('message', this._handleResize.bind(this));
+    this._observeContentChanges();
   }
 
   disconnectedCallback() {
     window.removeEventListener('message', this._handleResize.bind(this));
+    if (this._mutationObserver) {
+      this._mutationObserver.disconnect();
+    }
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
@@ -96,7 +101,8 @@ class GenerateHtml extends HTMLElement {
       apiKey: this.getAttribute('api-key'),
       model: this.getAttribute('model'),
       provider: this.getAttribute('provider') || 'gemini',
-      type: this.getAttribute('type') || 'html'
+      type: this.getAttribute('type') || 'html',
+      contextContent: this._extractContextContent()
     };
 
     // Call the coordinator
@@ -133,6 +139,31 @@ class GenerateHtml extends HTMLElement {
       // Reset to default or CSS defined
       this.style.height = ''; 
     }
+  }
+
+  _extractContextContent() {
+    // Look for a <template> element inside this custom element
+    const template = this.querySelector('template');
+    if (template) {
+      return template.innerHTML.trim();
+    }
+    return null;
+  }
+
+  _observeContentChanges() {
+    // Watch for changes to direct child nodes (e.g., template being added/removed)
+    // Only observe childList to avoid excessive triggers from nested content changes
+    this._mutationObserver = new MutationObserver(() => {
+      // If there's already a prompt, regenerate when content changes
+      if (this.getAttribute('prompt')) {
+        this.triggerGeneration();
+      }
+    });
+
+    this._mutationObserver.observe(this, {
+      childList: true,
+      subtree: false
+    });
   }
 }
 

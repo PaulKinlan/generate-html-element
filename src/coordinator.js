@@ -9,7 +9,7 @@ class Coordinator {
 
   async generateContent(config) {
     console.log('[Coordinator] generateContent called with config:', { ...config, apiKey: '***' });
-    const { prompt, apiKey, model, provider, type } = config;
+    const { prompt, apiKey, model, provider, type, contextContent } = config;
 
     if (!prompt) return;
 
@@ -29,10 +29,10 @@ class Coordinator {
     try {
       if (provider === 'chrome-ai') {
         console.log('[Coordinator] Using Chrome AI provider');
-        content = await this._generateChromeAI(prompt, model, type);
+        content = await this._generateChromeAI(prompt, model, type, contextContent);
       } else {
         console.log('[Coordinator] Using Gemini provider');
-        content = await this._generateGemini(prompt, apiKey, model, type);
+        content = await this._generateGemini(prompt, apiKey, model, type, contextContent);
       }
     } catch (error) {
       console.error('[Coordinator] Generation failed:', error);
@@ -51,7 +51,7 @@ class Coordinator {
     this._render(content, type);
   }
 
-  async _generateGemini(prompt, apiKey, model, type) {
+  async _generateGemini(prompt, apiKey, model, type, contextContent) {
     console.log('[Coordinator] _generateGemini start');
     if (!apiKey) throw new Error('API Key is required for Gemini provider');
 
@@ -69,6 +69,12 @@ class Coordinator {
       promptSuffix = " (Return raw HTML only)";
     }
 
+    // Build the user prompt with optional context content
+    let userPrompt = prompt + promptSuffix;
+    if (contextContent) {
+      userPrompt = `${prompt}\n\nPlease use the following structure/template as a reference or starting point:\n\n${contextContent}\n${promptSuffix}`;
+    }
+
     const responseStream = await client.models.generateContentStream({
       model: model || 'gemini-2.5-flash-latest',
       contents: [
@@ -76,7 +82,7 @@ class Coordinator {
           role: 'user',
           parts: [
             { text: systemInstruction }, 
-            { text: prompt + promptSuffix }
+            { text: userPrompt }
           ]
         }
       ]
@@ -96,7 +102,7 @@ class Coordinator {
     return this._cleanMarkdown(text);
   }
 
-  async _generateChromeAI(prompt, model, type) {
+  async _generateChromeAI(prompt, model, type, contextContent) {
     console.log('[Coordinator] _generateChromeAI start');
     if (!window.LanguageModel) {
       throw new Error('Chrome AI (window.LanguageModel) is not supported or enabled in this browser.');
@@ -116,7 +122,13 @@ class Coordinator {
         systemPrompt
     });
 
-    const stream = await session.promptStreaming(prompt);
+    // Build the user prompt with optional context content
+    let userPrompt = prompt;
+    if (contextContent) {
+      userPrompt = `${prompt}\n\nPlease use the following structure/template as a reference or starting point:\n\n${contextContent}\n`;
+    }
+
+    const stream = await session.promptStreaming(userPrompt);
     let result = '';
     for await (const chunk of stream) {
       result = chunk;

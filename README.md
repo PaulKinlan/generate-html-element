@@ -54,6 +54,28 @@ Import the component script (bundled) and use the tag in your HTML.
 ></generate-html>
 ```
 
+### Using Template Context (Experimental)
+
+You can provide structural context to influence the LLM's output by including a `<template>` element inside the `<generate-html>` component. The template content remains inert (not rendered) but is passed to the LLM as a reference structure.
+
+```html
+<generate-html
+  prompt="Create a product card with pricing"
+  api-key="YOUR_GEMINI_API_KEY"
+  provider="gemini"
+>
+  <template>
+    <div class="card">
+      <h2>Card Title</h2>
+      <p>Card description goes here</p>
+      <button>Action</button>
+    </div>
+  </template>
+</generate-html>
+```
+
+The LLM will use the template structure as a reference while following your prompt, making it easier to get consistent layouts or specific HTML structures.
+
 ### Attributes
 
 | Attribute  | Description                                      | Default |
