@@ -163,7 +163,7 @@ class GenerateHtml extends HTMLElement {
       model: this.getAttribute('model'),
       provider: this.getAttribute('provider') || 'gemini',
       type: this.getAttribute('type') || 'html',
-      csp: this._buildCSP() // Pass CSP to coordinator for renderer iframe
+      csp: this._currentCsp || this._buildCSP() // Reuse cached CSP or build if needed
     };
 
     // Call the coordinator
