@@ -151,19 +151,18 @@ class GenerateHtml extends HTMLElement {
   }
 
   _observeContentChanges() {
-    // Watch for changes to child nodes (e.g., template being added/removed)
+    // Watch for changes to direct child nodes (e.g., template being added/removed)
+    // Only observe childList to avoid excessive triggers from nested content changes
     this._mutationObserver = new MutationObserver(() => {
       // If there's already a prompt, regenerate when content changes
       if (this.getAttribute('prompt')) {
-        console.log('[GenerateHtml] Content changed, triggering regeneration');
         this.triggerGeneration();
       }
     });
 
     this._mutationObserver.observe(this, {
       childList: true,
-      subtree: true,
-      characterData: true
+      subtree: false
     });
   }
 }

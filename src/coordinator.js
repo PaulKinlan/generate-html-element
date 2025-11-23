@@ -72,7 +72,7 @@ class Coordinator {
     // Build the user prompt with optional context content
     let userPrompt = prompt + promptSuffix;
     if (contextContent) {
-      userPrompt = `${prompt}\n\nPlease use the following structure/template as a reference or starting point:\n\n${contextContent}${promptSuffix}`;
+      userPrompt = `${prompt}\n\nPlease use the following structure/template as a reference or starting point:\n\n${contextContent}\n${promptSuffix}`;
     }
 
     const responseStream = await client.models.generateContentStream({
@@ -125,7 +125,7 @@ class Coordinator {
     // Build the user prompt with optional context content
     let userPrompt = prompt;
     if (contextContent) {
-      userPrompt = `${prompt}\n\nPlease use the following structure/template as a reference or starting point:\n\n${contextContent}`;
+      userPrompt = `${prompt}\n\nPlease use the following structure/template as a reference or starting point:\n\n${contextContent}\n`;
     }
 
     const stream = await session.promptStreaming(userPrompt);
