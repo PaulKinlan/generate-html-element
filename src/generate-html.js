@@ -70,6 +70,12 @@ class GenerateHtml extends HTMLElement {
     this._iframe = this.shadowRoot.getElementById('coordinator-frame');
   }
 
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   async _initCoordinator() {
     if (!this._iframe) return;
 
@@ -78,16 +84,24 @@ class GenerateHtml extends HTMLElement {
     
     // Inject CSP meta tag into coordinator HTML
     let modifiedHtml = coordinatorHtml;
-    const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${csp}">`;
+    const escapedCsp = this._escapeHtml(csp);
+    const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
     
-    // Insert CSP meta tag into head
-    if (modifiedHtml.includes('</head>')) {
-      modifiedHtml = modifiedHtml.replace('</head>', `${cspMetaTag}\n  </head>`);
-    } else if (modifiedHtml.includes('<head>')) {
-      modifiedHtml = modifiedHtml.replace('<head>', `<head>\n  ${cspMetaTag}`);
+    // Insert CSP meta tag into head - use more robust pattern matching
+    const headMatch = modifiedHtml.match(/<head[^>]*>/i);
+    if (headMatch) {
+      const headTagEnd = headMatch.index + headMatch[0].length;
+      modifiedHtml = modifiedHtml.substring(0, headTagEnd) + '\n  ' + cspMetaTag + modifiedHtml.substring(headTagEnd);
     } else {
-      // If no head tag, prepend at start of HTML
-      modifiedHtml = cspMetaTag + '\n' + modifiedHtml;
+      // If no head tag found, prepend to content after doctype/html
+      const htmlMatch = modifiedHtml.match(/<html[^>]*>/i);
+      if (htmlMatch) {
+        const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
+        modifiedHtml = modifiedHtml.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + modifiedHtml.substring(htmlTagEnd);
+      } else {
+        // Last resort: prepend at start
+        modifiedHtml = cspMetaTag + '\n' + modifiedHtml;
+      }
     }
 
     // Create blob URL from the modified coordinator HTML
@@ -119,6 +133,11 @@ class GenerateHtml extends HTMLElement {
     }
     
     // Default CSP: Lock down everything by default
+    // Note: 'unsafe-inline' and 'unsafe-eval' are necessary here because:
+    // 1. The AI generates inline scripts/styles which cannot be predicted for nonce/hash
+    // 2. The content runs in a sandboxed iframe without 'allow-same-origin', 
+    //    preventing access to parent context, localStorage, or cookies
+    // 3. This is the security tradeoff for allowing dynamic AI-generated interactive content
     let csp = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; frame-src blob:;";
     
     // Add provider-specific origins

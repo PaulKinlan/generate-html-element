@@ -131,6 +131,12 @@ class Coordinator {
     return text.replace(/^```(html|svg|xml)?\n/, '').replace(/\n```$/, '');
   }
 
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   _render(content, type, csp) {
     const iframe = document.createElement('iframe');
     iframe.style.width = '100%';
@@ -148,17 +154,25 @@ class Coordinator {
 
     // Inject CSP meta tag if provided
     if (csp) {
-      console.log('[Coordinator] Injecting CSP into renderer iframe:', csp);
-      const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${csp.replace(/"/g, '&quot;')}">`;
+      console.log('[Coordinator] Injecting CSP into renderer iframe');
+      const escapedCsp = this._escapeHtml(csp);
+      const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
       
-      // Try to inject into head or at the beginning
-      if (finalContent.includes('<head>')) {
-        finalContent = finalContent.replace('<head>', `<head>\n${cspMetaTag}\n`);
-      } else if (finalContent.includes('<!DOCTYPE html>')) {
-        finalContent = finalContent.replace('<!DOCTYPE html>', `<!DOCTYPE html>\n${cspMetaTag}`);
+      // Use robust pattern matching to inject into head
+      const headMatch = finalContent.match(/<head[^>]*>/i);
+      if (headMatch) {
+        const headTagEnd = headMatch.index + headMatch[0].length;
+        finalContent = finalContent.substring(0, headTagEnd) + '\n' + cspMetaTag + finalContent.substring(headTagEnd);
       } else {
-        // Prepend at the start
-        finalContent = cspMetaTag + '\n' + finalContent;
+        // Try to find html tag
+        const htmlMatch = finalContent.match(/<html[^>]*>/i);
+        if (htmlMatch) {
+          const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
+          finalContent = finalContent.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + finalContent.substring(htmlTagEnd);
+        } else {
+          // Last resort: prepend at start
+          finalContent = cspMetaTag + '\n' + finalContent;
+        }
       }
     }
 
