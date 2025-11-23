@@ -8,8 +8,8 @@ class Coordinator {
   }
 
   async generateContent(config) {
-    console.log('[Coordinator] generateContent called with config:', { ...config, apiKey: '***' });
-    const { prompt, apiKey, model, provider, type } = config;
+    console.log('[Coordinator] generateContent called with config:', { ...config, apiKey: '***', csp: config.csp ? '***' : undefined });
+    const { prompt, apiKey, model, provider, type, csp } = config;
 
     if (!prompt) return;
 
@@ -48,7 +48,7 @@ class Coordinator {
     }
 
     console.log('[Coordinator] Rendering content (length: ' + content.length + ')');
-    this._render(content, type);
+    this._render(content, type, csp);
   }
 
   async _generateGemini(prompt, apiKey, model, type) {
@@ -131,7 +131,7 @@ class Coordinator {
     return text.replace(/^```(html|svg|xml)?\n/, '').replace(/\n```$/, '');
   }
 
-  _render(content, type) {
+  _render(content, type, csp) {
     const iframe = document.createElement('iframe');
     iframe.style.width = '100%';
     iframe.style.height = '100%';
@@ -144,6 +144,22 @@ class Coordinator {
     if (type === 'image' && !content.trim().startsWith('<svg')) {
         // If it's supposed to be an image but isn't SVG, wrap it or handle error?
         // For now, we assume LLM returns SVG.
+    }
+
+    // Inject CSP meta tag if provided
+    if (csp) {
+      console.log('[Coordinator] Injecting CSP into renderer iframe:', csp);
+      const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${csp.replace(/"/g, '&quot;')}">`;
+      
+      // Try to inject into head or at the beginning
+      if (finalContent.includes('<head>')) {
+        finalContent = finalContent.replace('<head>', `<head>\n${cspMetaTag}\n`);
+      } else if (finalContent.includes('<!DOCTYPE html>')) {
+        finalContent = finalContent.replace('<!DOCTYPE html>', `<!DOCTYPE html>\n${cspMetaTag}`);
+      } else {
+        // Prepend at the start
+        finalContent = cspMetaTag + '\n' + finalContent;
+      }
     }
 
     // Inject resizing script for HTML content

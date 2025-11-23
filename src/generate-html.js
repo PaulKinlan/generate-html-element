@@ -6,7 +6,7 @@ import coordinatorHtml from 'virtual:coordinator-html';
 
 class GenerateHtml extends HTMLElement {
   static get observedAttributes() {
-    return ['prompt', 'api-key', 'model', 'provider', 'type', 'sizing'];
+    return ['prompt', 'api-key', 'model', 'provider', 'type', 'sizing', 'csp'];
   }
 
   constructor() {
@@ -14,6 +14,7 @@ class GenerateHtml extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._coordinator = null;
     this._iframe = null;
+    this._currentCsp = null;
   }
 
   connectedCallback() {
@@ -35,6 +36,10 @@ class GenerateHtml extends HTMLElement {
       }
       if (name === 'sizing') {
         this._updateSizing();
+      }
+      if (name === 'csp' || name === 'provider') {
+        // CSP or provider change requires re-initialization of coordinator
+        this._initCoordinator();
       }
     }
   }
@@ -68,15 +73,31 @@ class GenerateHtml extends HTMLElement {
   async _initCoordinator() {
     if (!this._iframe) return;
 
-    // Create blob URL from the build-time embedded coordinator HTML
-    // The coordinatorHtml is fully bundled with all scripts inlined at build time
-    const blob = new Blob([coordinatorHtml], { type: 'text/html' });
+    // Build CSP based on provider and custom attribute
+    const csp = this._buildCSP();
+    
+    // Inject CSP meta tag into coordinator HTML
+    let modifiedHtml = coordinatorHtml;
+    const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${csp}">`;
+    
+    // Insert CSP meta tag into head
+    if (modifiedHtml.includes('</head>')) {
+      modifiedHtml = modifiedHtml.replace('</head>', `${cspMetaTag}\n  </head>`);
+    } else if (modifiedHtml.includes('<head>')) {
+      modifiedHtml = modifiedHtml.replace('<head>', `<head>\n  ${cspMetaTag}`);
+    } else {
+      // If no head tag, prepend at start of HTML
+      modifiedHtml = cspMetaTag + '\n' + modifiedHtml;
+    }
+
+    // Create blob URL from the modified coordinator HTML
+    const blob = new Blob([modifiedHtml], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
     this._iframe.src = blobUrl;
     
     // Wait for iframe load
     this._iframe.onload = () => {
-      console.log('[GenerateHtml] Coordinator iframe loaded from embedded blob URL');
+      console.log('[GenerateHtml] Coordinator iframe loaded from embedded blob URL with CSP');
       // Initialize Comlink
       this._coordinator = Comlink.wrap(Comlink.windowEndpoint(this._iframe.contentWindow));
       
@@ -85,6 +106,32 @@ class GenerateHtml extends HTMLElement {
         this.triggerGeneration();
       }
     };
+  }
+
+  _buildCSP() {
+    const provider = this.getAttribute('provider') || 'gemini';
+    const customCsp = this.getAttribute('csp');
+    
+    // If custom CSP is provided, use it
+    if (customCsp) {
+      console.log('[GenerateHtml] Using custom CSP:', customCsp);
+      return customCsp;
+    }
+    
+    // Default CSP: Lock down everything by default
+    let csp = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; frame-src blob:;";
+    
+    // Add provider-specific origins
+    if (provider === 'gemini') {
+      csp += " connect-src https://generativelanguage.googleapis.com;";
+    } else if (provider === 'chrome-ai') {
+      // Chrome AI is local, no external connections needed
+      csp += " connect-src 'none';";
+    }
+    
+    console.log('[GenerateHtml] Built CSP for provider', provider, ':', csp);
+    this._currentCsp = csp;
+    return csp;
   }
 
   async triggerGeneration() {
@@ -96,7 +143,8 @@ class GenerateHtml extends HTMLElement {
       apiKey: this.getAttribute('api-key'),
       model: this.getAttribute('model'),
       provider: this.getAttribute('provider') || 'gemini',
-      type: this.getAttribute('type') || 'html'
+      type: this.getAttribute('type') || 'html',
+      csp: this._buildCSP() // Pass CSP to coordinator for renderer iframe
     };
 
     // Call the coordinator
