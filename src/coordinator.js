@@ -104,7 +104,7 @@ class Coordinator {
 
     const availability  = await LanguageModel.availability();
 
-     if (availability == "no") {
+     if (availability === 'unavailable') {
       throw new Error('Chrome AI (window.LanguageModel) is not supported or enabled in this browser.');
     }  
     
@@ -113,7 +113,10 @@ class Coordinator {
       : 'Generate a self-contained HTML page with CSS/JS. Return only raw HTML code. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
 
     const session = await LanguageModel.create({
-        systemPrompt
+      initialPrompts: [{
+        role: 'system',
+        content: systemPrompt
+      }]
     });
 
     const stream = await session.promptStreaming(prompt);
