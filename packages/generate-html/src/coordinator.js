@@ -117,7 +117,7 @@ class Coordinator {
 
     const availability  = await LanguageModel.availability();
 
-     if (availability == "no") {
+     if (availability === 'unavailable') {
       throw new Error('Chrome AI (window.LanguageModel) is not supported or enabled in this browser.');
     }  
     
