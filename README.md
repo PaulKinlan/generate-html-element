@@ -100,6 +100,10 @@ By default, the component applies a strict CSP to both iframes:
     *   **Gemini:** Adds `https://generativelanguage.googleapis.com` to `connect-src`
     *   **Chrome AI:** Local only, no external connections
 
+**Implementation:**
+*   **Priority:** Uses the iframe `csp` attribute (Chrome/Edge support) for cleaner enforcement
+*   **Fallback:** Injects CSP meta tags into HTML for browsers without iframe `csp` attribute support
+
 **Custom CSP:**
 ```html
 <generate-html 

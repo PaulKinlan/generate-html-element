@@ -152,9 +152,18 @@ class Coordinator {
         // For now, we assume LLM returns SVG.
     }
 
-    // Inject CSP meta tag if provided
-    if (csp) {
-      console.log('[Coordinator] Injecting CSP into renderer iframe');
+    // Apply CSP if provided - try iframe csp attribute first, fallback to meta tag
+    let useCspAttribute = false;
+    if (csp && 'csp' in iframe) {
+      // Modern approach: use iframe csp attribute (must be set before src)
+      console.log('[Coordinator] Using iframe csp attribute for renderer');
+      iframe.setAttribute('csp', csp);
+      useCspAttribute = true;
+    }
+    
+    // Fallback: inject CSP meta tag into content if csp attribute not supported
+    if (csp && !useCspAttribute) {
+      console.log('[Coordinator] Falling back to CSP meta tag injection for renderer');
       const escapedCsp = this._escapeHtml(csp);
       const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
       

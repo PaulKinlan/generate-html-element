@@ -82,32 +82,45 @@ class GenerateHtml extends HTMLElement {
     // Build CSP based on provider and custom attribute
     const csp = this._buildCSP();
     
-    // Inject CSP meta tag into coordinator HTML
-    let modifiedHtml = coordinatorHtml;
-    const escapedCsp = this._escapeHtml(csp);
-    const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
-    
-    // Insert CSP meta tag into head - use more robust pattern matching
-    const headMatch = modifiedHtml.match(/<head[^>]*>/i);
-    if (headMatch) {
-      const headTagEnd = headMatch.index + headMatch[0].length;
-      modifiedHtml = modifiedHtml.substring(0, headTagEnd) + '\n  ' + cspMetaTag + modifiedHtml.substring(headTagEnd);
-    } else {
-      // If no head tag found, prepend to content after doctype/html
-      const htmlMatch = modifiedHtml.match(/<html[^>]*>/i);
-      if (htmlMatch) {
-        const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
-        modifiedHtml = modifiedHtml.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + modifiedHtml.substring(htmlTagEnd);
-      } else {
-        // Last resort: prepend at start
-        modifiedHtml = cspMetaTag + '\n' + modifiedHtml;
-      }
-    }
-
-    // Create blob URL from the modified coordinator HTML
-    const blob = new Blob([modifiedHtml], { type: 'text/html' });
+    // Create blob URL from coordinator HTML
+    const blob = new Blob([coordinatorHtml], { type: 'text/html' });
     const blobUrl = URL.createObjectURL(blob);
-    this._iframe.src = blobUrl;
+    
+    // Try to use iframe csp attribute first (modern approach)
+    // Must be set before src according to spec
+    if ('csp' in this._iframe) {
+      console.log('[GenerateHtml] Using iframe csp attribute');
+      this._iframe.setAttribute('csp', csp);
+      this._iframe.src = blobUrl;
+    } else {
+      // Fallback: Inject CSP meta tag into coordinator HTML
+      console.log('[GenerateHtml] Falling back to CSP meta tag injection');
+      let modifiedHtml = coordinatorHtml;
+      const escapedCsp = this._escapeHtml(csp);
+      const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
+      
+      // Insert CSP meta tag into head - use more robust pattern matching
+      const headMatch = modifiedHtml.match(/<head[^>]*>/i);
+      if (headMatch) {
+        const headTagEnd = headMatch.index + headMatch[0].length;
+        modifiedHtml = modifiedHtml.substring(0, headTagEnd) + '\n  ' + cspMetaTag + modifiedHtml.substring(headTagEnd);
+      } else {
+        // If no head tag found, prepend to content after doctype/html
+        const htmlMatch = modifiedHtml.match(/<html[^>]*>/i);
+        if (htmlMatch) {
+          const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
+          modifiedHtml = modifiedHtml.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + modifiedHtml.substring(htmlTagEnd);
+        } else {
+          // Last resort: prepend at start
+          modifiedHtml = cspMetaTag + '\n' + modifiedHtml;
+        }
+      }
+
+      // Create blob URL from the modified coordinator HTML
+      const modifiedBlob = new Blob([modifiedHtml], { type: 'text/html' });
+      const modifiedBlobUrl = URL.createObjectURL(modifiedBlob);
+      this._iframe.src = modifiedBlobUrl;
+    }
     
     // Wait for iframe load
     this._iframe.onload = () => {
