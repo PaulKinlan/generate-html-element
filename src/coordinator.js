@@ -153,34 +153,39 @@ class Coordinator {
     }
 
     // Apply CSP if provided - try iframe csp attribute first, fallback to meta tag
-    let useCspAttribute = false;
-    if (csp && 'csp' in iframe) {
-      // Modern approach: use iframe csp attribute (must be set before src)
-      console.log('[Coordinator] Using iframe csp attribute for renderer');
+    if (csp) {
+      // Try setting the csp attribute for feature detection
       iframe.setAttribute('csp', csp);
-      useCspAttribute = true;
-    }
-    
-    // Fallback: inject CSP meta tag into content if csp attribute not supported
-    if (csp && !useCspAttribute) {
-      console.log('[Coordinator] Falling back to CSP meta tag injection for renderer');
-      const escapedCsp = this._escapeHtml(csp);
-      const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
+      const supportsCspAttribute = iframe.getAttribute('csp') === csp;
       
-      // Use robust pattern matching to inject into head
-      const headMatch = finalContent.match(/<head[^>]*>/i);
-      if (headMatch) {
-        const headTagEnd = headMatch.index + headMatch[0].length;
-        finalContent = finalContent.substring(0, headTagEnd) + '\n' + cspMetaTag + finalContent.substring(headTagEnd);
+      if (supportsCspAttribute) {
+        // Modern approach: use iframe csp attribute (must be set before src)
+        console.log('[Coordinator] Using iframe csp attribute for renderer');
+        // Keep the attribute set, will be used when src is set
       } else {
-        // Try to find html tag
-        const htmlMatch = finalContent.match(/<html[^>]*>/i);
-        if (htmlMatch) {
-          const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
-          finalContent = finalContent.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + finalContent.substring(htmlTagEnd);
+        // Fallback: inject CSP meta tag into content if csp attribute not supported
+        console.log('[Coordinator] Falling back to CSP meta tag injection for renderer');
+        // Remove the attribute if not supported
+        iframe.removeAttribute('csp');
+        
+        const escapedCsp = this._escapeHtml(csp);
+        const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
+        
+        // Use robust pattern matching to inject into head
+        const headMatch = finalContent.match(/<head[^>]*>/i);
+        if (headMatch) {
+          const headTagEnd = headMatch.index + headMatch[0].length;
+          finalContent = finalContent.substring(0, headTagEnd) + '\n' + cspMetaTag + finalContent.substring(headTagEnd);
         } else {
-          // Last resort: prepend at start
-          finalContent = cspMetaTag + '\n' + finalContent;
+          // Try to find html tag
+          const htmlMatch = finalContent.match(/<html[^>]*>/i);
+          if (htmlMatch) {
+            const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
+            finalContent = finalContent.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + finalContent.substring(htmlTagEnd);
+          } else {
+            // Last resort: prepend at start
+            finalContent = cspMetaTag + '\n' + finalContent;
+          }
         }
       }
     }

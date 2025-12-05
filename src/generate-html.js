@@ -82,19 +82,24 @@ class GenerateHtml extends HTMLElement {
     // Build CSP based on provider and custom attribute
     const csp = this._buildCSP();
     
-    // Create blob URL from coordinator HTML
-    const blob = new Blob([coordinatorHtml], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    
     // Try to use iframe csp attribute first (modern approach)
     // Must be set before src according to spec
-    if ('csp' in this._iframe) {
+    // Feature detection: try setting the attribute and see if it works
+    this._iframe.setAttribute('csp', csp);
+    const supportsCspAttribute = this._iframe.getAttribute('csp') === csp;
+    
+    if (supportsCspAttribute) {
       console.log('[GenerateHtml] Using iframe csp attribute');
-      this._iframe.setAttribute('csp', csp);
+      // Create blob URL from the unmodified coordinator HTML
+      const blob = new Blob([coordinatorHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
       this._iframe.src = blobUrl;
     } else {
       // Fallback: Inject CSP meta tag into coordinator HTML
       console.log('[GenerateHtml] Falling back to CSP meta tag injection');
+      // Remove the attribute if not supported
+      this._iframe.removeAttribute('csp');
+      
       let modifiedHtml = coordinatorHtml;
       const escapedCsp = this._escapeHtml(csp);
       const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
@@ -117,9 +122,9 @@ class GenerateHtml extends HTMLElement {
       }
 
       // Create blob URL from the modified coordinator HTML
-      const modifiedBlob = new Blob([modifiedHtml], { type: 'text/html' });
-      const modifiedBlobUrl = URL.createObjectURL(modifiedBlob);
-      this._iframe.src = modifiedBlobUrl;
+      const blob = new Blob([modifiedHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      this._iframe.src = blobUrl;
     }
     
     // Wait for iframe load
