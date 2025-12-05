@@ -140,13 +140,13 @@ class GenerateHtml extends HTMLElement {
     };
   }
 
-  _buildCSP() {
+  _buildCSP(forRenderer = false) {
     const provider = this.getAttribute('provider') || 'gemini';
     const customCsp = this.getAttribute('csp');
     
-    // If custom CSP is provided, use it
+    // If custom CSP is provided, use it for both coordinator and renderer
     if (customCsp) {
-      console.log('[GenerateHtml] Using custom CSP:', customCsp);
+      console.log(`[GenerateHtml] Using custom CSP${forRenderer ? ' for renderer' : ''}:`, customCsp);
       return customCsp;
     }
     
@@ -158,16 +158,23 @@ class GenerateHtml extends HTMLElement {
     // 3. This is the security tradeoff for allowing dynamic AI-generated interactive content
     let csp = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; frame-src blob:;";
     
-    // Add provider-specific origins
-    if (provider === 'gemini') {
-      csp += " connect-src https://generativelanguage.googleapis.com;";
-    } else if (provider === 'chrome-ai') {
-      // Chrome AI is local, no external connections needed
+    // Add provider-specific origins ONLY for coordinator, not for renderer
+    if (!forRenderer) {
+      if (provider === 'gemini') {
+        csp += " connect-src https://generativelanguage.googleapis.com;";
+      } else if (provider === 'chrome-ai') {
+        // Chrome AI is local, no external connections needed
+        csp += " connect-src 'none';";
+      }
+    } else {
+      // Renderer should not be able to connect to external APIs
       csp += " connect-src 'none';";
     }
     
-    console.log('[GenerateHtml] Built CSP for provider', provider, ':', csp);
-    this._currentCsp = csp;
+    console.log(`[GenerateHtml] Built CSP${forRenderer ? ' for renderer' : ' for coordinator'}:`, csp);
+    if (!forRenderer) {
+      this._currentCsp = csp;
+    }
     return csp;
   }
 
@@ -181,7 +188,7 @@ class GenerateHtml extends HTMLElement {
       model: this.getAttribute('model'),
       provider: this.getAttribute('provider') || 'gemini',
       type: this.getAttribute('type') || 'html',
-      csp: this._currentCsp || this._buildCSP() // Reuse cached CSP or build if needed
+      csp: this._buildCSP(true) // Build CSP for renderer (without LLM API access)
     };
 
     // Call the coordinator
