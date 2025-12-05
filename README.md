@@ -64,11 +64,12 @@ Import the component script (bundled) and use the tag in your HTML.
 | `model`    | Model version (e.g., `gemini-2.5-flash-latest`). | `gemini-2.5-flash-latest` |
 | `type`     | Output type: `html` (interactive) or `image` (SVG). | `html` |
 | `sizing`   | `content` (auto-resize to content) or `fill` (100% height). | `fill` |
+| `csp`      | Custom Content Security Policy. If not set, a secure default policy is used. | (Auto-generated) |
 | `debug`    | Boolean. If present, logs debug info to console. | `false` |
 
 ## Security Architecture
 
-This component handles untrusted AI-generated code. To prevent XSS and data leakage, it employs a **Double Iframe Strategy**:
+This component handles untrusted AI-generated code. To prevent XSS and data leakage, it employs a **Double Iframe Strategy** with **Content Security Policy (CSP)**:
 
 1.  **Host Page (`<generate-html>`)**:
     *   Living in your application.
@@ -80,12 +81,36 @@ This component handles untrusted AI-generated code. To prevent XSS and data leak
     *   Communicates with the Host via `Comlink`.
     *   Handles the API calls to Gemini/Chrome AI.
     *   Creates the *Renderer Iframe*.
+    *   **CSP Applied:** Automatically configured based on provider.
 
 3.  **Renderer Iframe (Sandboxed)**:
     *   Loaded via a `Blob` URL.
     *   **Sandbox Attributes:** `allow-scripts allow-forms`.
     *   **Crucially Missing:** `allow-same-origin`. This treats the origin as opaque/null.
     *   The generated HTML/JS runs here. It cannot access the Coordinator's variables (API Key) or the Host's LocalStorage/Cookies.
+    *   **CSP Applied:** Same policy as Coordinator to restrict external resources.
+
+### Content Security Policy
+
+By default, the component applies a strict CSP to both iframes:
+
+*   **Default Policy:** `default-src 'none'` - All external resources blocked by default
+*   **Allowed:** Inline scripts/styles, blob URLs, data URLs
+*   **Provider-specific:** 
+    *   **Gemini:** Adds `https://generativelanguage.googleapis.com` to `connect-src`
+    *   **Chrome AI:** Local only, no external connections
+
+**Implementation:**
+*   **Priority:** Uses the iframe `csp` attribute (Chrome/Edge support) for cleaner enforcement
+*   **Fallback:** Injects CSP meta tags into HTML for browsers without iframe `csp` attribute support
+
+**Custom CSP:**
+```html
+<generate-html 
+  prompt="Create a game"
+  csp="default-src 'self'; script-src 'unsafe-inline'; connect-src https://api.example.com">
+</generate-html>
+```
 
 ## Development
 
