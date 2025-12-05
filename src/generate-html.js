@@ -15,6 +15,7 @@ class GenerateHtml extends HTMLElement {
     this._coordinator = null;
     this._iframe = null;
     this._currentCsp = null;
+    this._currentRendererCsp = null;
   }
 
   connectedCallback() {
@@ -145,9 +146,18 @@ class GenerateHtml extends HTMLElement {
     const customCsp = this.getAttribute('csp');
     
     // If custom CSP is provided, use it for both coordinator and renderer
+    // This gives users full control over permissions in both layers
     if (customCsp) {
       console.log(`[GenerateHtml] Using custom CSP${forRenderer ? ' for renderer' : ''}:`, customCsp);
       return customCsp;
+    }
+    
+    // Return cached CSP if available
+    if (forRenderer && this._currentRendererCsp) {
+      return this._currentRendererCsp;
+    }
+    if (!forRenderer && this._currentCsp) {
+      return this._currentCsp;
     }
     
     // Default CSP: Lock down everything by default
@@ -159,6 +169,7 @@ class GenerateHtml extends HTMLElement {
     let csp = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; frame-src blob:;";
     
     // Add provider-specific origins ONLY for coordinator, not for renderer
+    // Security: Renderer should not be able to connect to LLM APIs
     if (!forRenderer) {
       if (provider === 'gemini') {
         csp += " connect-src https://generativelanguage.googleapis.com;";
@@ -172,9 +183,14 @@ class GenerateHtml extends HTMLElement {
     }
     
     console.log(`[GenerateHtml] Built CSP${forRenderer ? ' for renderer' : ' for coordinator'}:`, csp);
-    if (!forRenderer) {
+    
+    // Cache the built CSP
+    if (forRenderer) {
+      this._currentRendererCsp = csp;
+    } else {
       this._currentCsp = csp;
     }
+    
     return csp;
   }
 
