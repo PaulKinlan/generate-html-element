@@ -6,7 +6,7 @@ import coordinatorHtml from 'virtual:coordinator-html';
 
 class GenerateHtml extends HTMLElement {
   static get observedAttributes() {
-    return ['prompt', 'api-key', 'model', 'provider', 'type', 'sizing'];
+    return ['prompt', 'api-key', 'model', 'provider', 'type', 'sizing', 'csp'];
   }
 
   constructor() {
@@ -14,6 +14,8 @@ class GenerateHtml extends HTMLElement {
     this.attachShadow({ mode: 'open' });
     this._coordinator = null;
     this._iframe = null;
+    this._currentCsp = null;
+    this._currentRendererCsp = null;
   }
 
   connectedCallback() {
@@ -35,6 +37,10 @@ class GenerateHtml extends HTMLElement {
       }
       if (name === 'sizing') {
         this._updateSizing();
+      }
+      if (name === 'csp' || name === 'provider') {
+        // CSP or provider change requires re-initialization of coordinator
+        this._initCoordinator();
       }
     }
   }
@@ -65,18 +71,66 @@ class GenerateHtml extends HTMLElement {
     this._iframe = this.shadowRoot.getElementById('coordinator-frame');
   }
 
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   async _initCoordinator() {
     if (!this._iframe) return;
 
-    // Create blob URL from the build-time embedded coordinator HTML
-    // The coordinatorHtml is fully bundled with all scripts inlined at build time
-    const blob = new Blob([coordinatorHtml], { type: 'text/html' });
-    const blobUrl = URL.createObjectURL(blob);
-    this._iframe.src = blobUrl;
+    // Build CSP based on provider and custom attribute
+    const csp = this._buildCSP();
+    
+    // Try to use iframe csp attribute first (modern approach)
+    // Must be set before src according to spec
+    // Feature detection: try setting the attribute and see if it works
+    this._iframe.setAttribute('csp', csp);
+    const supportsCspAttribute = this._iframe.getAttribute('csp') === csp;
+    
+    if (supportsCspAttribute) {
+      console.log('[GenerateHtml] Using iframe csp attribute');
+      // Create blob URL from the unmodified coordinator HTML
+      const blob = new Blob([coordinatorHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      this._iframe.src = blobUrl;
+    } else {
+      // Fallback: Inject CSP meta tag into coordinator HTML
+      console.log('[GenerateHtml] Falling back to CSP meta tag injection');
+      // Remove the attribute if not supported
+      this._iframe.removeAttribute('csp');
+      
+      let modifiedHtml = coordinatorHtml;
+      const escapedCsp = this._escapeHtml(csp);
+      const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
+      
+      // Insert CSP meta tag into head - use more robust pattern matching
+      const headMatch = modifiedHtml.match(/<head[^>]*>/i);
+      if (headMatch) {
+        const headTagEnd = headMatch.index + headMatch[0].length;
+        modifiedHtml = modifiedHtml.substring(0, headTagEnd) + '\n  ' + cspMetaTag + modifiedHtml.substring(headTagEnd);
+      } else {
+        // If no head tag found, prepend to content after doctype/html
+        const htmlMatch = modifiedHtml.match(/<html[^>]*>/i);
+        if (htmlMatch) {
+          const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
+          modifiedHtml = modifiedHtml.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + modifiedHtml.substring(htmlTagEnd);
+        } else {
+          // Last resort: prepend at start
+          modifiedHtml = cspMetaTag + '\n' + modifiedHtml;
+        }
+      }
+
+      // Create blob URL from the modified coordinator HTML
+      const blob = new Blob([modifiedHtml], { type: 'text/html' });
+      const blobUrl = URL.createObjectURL(blob);
+      this._iframe.src = blobUrl;
+    }
     
     // Wait for iframe load
     this._iframe.onload = () => {
-      console.log('[GenerateHtml] Coordinator iframe loaded from embedded blob URL');
+      console.log('[GenerateHtml] Coordinator iframe loaded from embedded blob URL with CSP');
       // Initialize Comlink
       this._coordinator = Comlink.wrap(Comlink.windowEndpoint(this._iframe.contentWindow));
       
@@ -85,6 +139,59 @@ class GenerateHtml extends HTMLElement {
         this.triggerGeneration();
       }
     };
+  }
+
+  _buildCSP(forRenderer = false) {
+    const provider = this.getAttribute('provider') || 'gemini';
+    const customCsp = this.getAttribute('csp');
+    
+    // If custom CSP is provided, use it for both coordinator and renderer
+    // This gives users full control over permissions in both layers
+    if (customCsp) {
+      console.log(`[GenerateHtml] Using custom CSP${forRenderer ? ' for renderer' : ''}:`, customCsp);
+      return customCsp;
+    }
+    
+    // Return cached CSP if available
+    if (forRenderer && this._currentRendererCsp) {
+      return this._currentRendererCsp;
+    }
+    if (!forRenderer && this._currentCsp) {
+      return this._currentCsp;
+    }
+    
+    // Default CSP: Lock down everything by default
+    // Note: 'unsafe-inline' and 'unsafe-eval' are necessary here because:
+    // 1. The AI generates inline scripts/styles which cannot be predicted for nonce/hash
+    // 2. The content runs in a sandboxed iframe without 'allow-same-origin', 
+    //    preventing access to parent context, localStorage, or cookies
+    // 3. This is the security tradeoff for allowing dynamic AI-generated interactive content
+    let csp = "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' blob:; style-src 'unsafe-inline'; img-src data: blob:; font-src data: blob:; frame-src blob:;";
+    
+    // Add provider-specific origins ONLY for coordinator, not for renderer
+    // Security: Renderer should not be able to connect to LLM APIs
+    if (!forRenderer) {
+      if (provider === 'gemini') {
+        csp += " connect-src https://generativelanguage.googleapis.com;";
+      } else if (provider === 'chrome-ai') {
+        // Chrome AI is local, no external connections needed
+        csp += " connect-src 'none';";
+      }
+    } else {
+      // Renderer should not be able to connect to external APIs
+      csp += " connect-src 'none';";
+    }
+    
+    console.log(`[GenerateHtml] Built CSP${forRenderer ? ' for renderer' : ' for coordinator'}:`, csp);
+    
+    // Cache the built CSP
+    if (forRenderer) {
+      this._currentRendererCsp = csp;
+    } else {
+      this._currentCsp = csp;
+    }
+    
+    return csp;
   }
 
   async triggerGeneration() {
@@ -96,7 +203,8 @@ class GenerateHtml extends HTMLElement {
       apiKey: this.getAttribute('api-key'),
       model: this.getAttribute('model'),
       provider: this.getAttribute('provider') || 'gemini',
-      type: this.getAttribute('type') || 'html'
+      type: this.getAttribute('type') || 'html',
+      csp: this._buildCSP(true) // Build CSP for renderer (without LLM API access)
     };
 
     // Call the coordinator
