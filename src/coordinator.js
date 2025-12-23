@@ -8,8 +8,9 @@ class Coordinator {
   }
 
   async generateContent(config) {
-    console.log('[Coordinator] generateContent called with config:', { ...config, apiKey: '***' });
-    const { prompt, apiKey, model, provider, type, contextContent } = config;
+    console.log('[Coordinator] generateContent called with config:', { ...config, apiKey: '***', csp: config.csp ? '***' : undefined });
+    const { prompt, apiKey, model, provider, type, csp, contextContent } = config;
+
 
     if (!prompt) return;
 
@@ -48,7 +49,7 @@ class Coordinator {
     }
 
     console.log('[Coordinator] Rendering content (length: ' + content.length + ')');
-    this._render(content, type);
+    this._render(content, type, csp);
   }
 
   async _generateGemini(prompt, apiKey, model, type, contextContent) {
@@ -110,7 +111,7 @@ class Coordinator {
 
     const availability  = await LanguageModel.availability();
 
-     if (availability == "no") {
+     if (availability === 'unavailable') {
       throw new Error('Chrome AI (window.LanguageModel) is not supported or enabled in this browser.');
     }  
     
@@ -119,7 +120,10 @@ class Coordinator {
       : 'Generate a self-contained HTML page with CSS/JS. Return only raw HTML code. Do not link to external CSS or JS files. All styling and scripts must be embedded inline.';
 
     const session = await LanguageModel.create({
-        systemPrompt
+      initialPrompts: [{
+        role: 'system',
+        content: systemPrompt
+      }]
     });
 
     // Build the user prompt with optional context content
@@ -143,7 +147,13 @@ class Coordinator {
     return text.replace(/^```(html|svg|xml)?\n/, '').replace(/\n```$/, '');
   }
 
-  _render(content, type) {
+  _escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
+  _render(content, type, csp) {
     const iframe = document.createElement('iframe');
     iframe.style.width = '100%';
     iframe.style.height = '100%';
@@ -156,6 +166,44 @@ class Coordinator {
     if (type === 'image' && !content.trim().startsWith('<svg')) {
         // If it's supposed to be an image but isn't SVG, wrap it or handle error?
         // For now, we assume LLM returns SVG.
+    }
+
+    // Apply CSP if provided - try iframe csp attribute first, fallback to meta tag
+    if (csp) {
+      // Try setting the csp attribute for feature detection
+      iframe.setAttribute('csp', csp);
+      const supportsCspAttribute = iframe.getAttribute('csp') === csp;
+      
+      if (supportsCspAttribute) {
+        // Modern approach: use iframe csp attribute (must be set before src)
+        console.log('[Coordinator] Using iframe csp attribute for renderer');
+        // Keep the attribute set, will be used when src is set
+      } else {
+        // Fallback: inject CSP meta tag into content if csp attribute not supported
+        console.log('[Coordinator] Falling back to CSP meta tag injection for renderer');
+        // Remove the attribute if not supported
+        iframe.removeAttribute('csp');
+        
+        const escapedCsp = this._escapeHtml(csp);
+        const cspMetaTag = `<meta http-equiv="Content-Security-Policy" content="${escapedCsp}">`;
+        
+        // Use robust pattern matching to inject into head
+        const headMatch = finalContent.match(/<head[^>]*>/i);
+        if (headMatch) {
+          const headTagEnd = headMatch.index + headMatch[0].length;
+          finalContent = finalContent.substring(0, headTagEnd) + '\n' + cspMetaTag + finalContent.substring(headTagEnd);
+        } else {
+          // Try to find html tag
+          const htmlMatch = finalContent.match(/<html[^>]*>/i);
+          if (htmlMatch) {
+            const htmlTagEnd = htmlMatch.index + htmlMatch[0].length;
+            finalContent = finalContent.substring(0, htmlTagEnd) + '\n' + cspMetaTag + '\n' + finalContent.substring(htmlTagEnd);
+          } else {
+            // Last resort: prepend at start
+            finalContent = cspMetaTag + '\n' + finalContent;
+          }
+        }
+      }
     }
 
     // Inject resizing script for HTML content
