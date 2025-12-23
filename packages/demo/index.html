@@ -206,7 +206,27 @@
     </div>
   </div>
 
-  <generate-html id="generator"></generate-html>
+  <generate-html id="generator">
+    <template>
+      <div class="card">
+        <h2>Card Title</h2>
+        <p>Card content goes here</p>
+        <button>Action</button>
+      </div>
+    </template>
+  </generate-html>
+
+  <div style="margin-top: 2rem; padding: 1rem; background: #e3f2fd; border-radius: 8px;">
+    <h2 style="margin-top: 0;">💡 Using Template Context</h2>
+    <p>The <code>&lt;template&gt;</code> element inside the <code>&lt;generate-html&gt;</code> component provides structural context to the LLM.</p>
+    <p><strong>Try these prompts to see how the template influences the output:</strong></p>
+    <ul>
+      <li>"Create a card layout with an image"</li>
+      <li>"Make a product card with pricing"</li>
+      <li>"Build a user profile card"</li>
+    </ul>
+    <p><em>The LLM will use the template structure as a reference while following your prompt.</em></p>
+  </div>
 
   <script>
     const generator = document.getElementById('generator');
