@@ -7,7 +7,7 @@
     "@paulkinlan/generate-html": "*"
   },
   "devDependencies": {
-    "vite": "^7.2.4"
+    "vite": "^7.3.5"
   },
   "scripts": {
     "dev": "vite",
